@@ -84,11 +84,18 @@ def pre_handle_images(dataSet, saturated=False):
 
 
 def pca(X, n_components):
+    """
+    Preprocess the dataSet with Principal Component Analysis
+    to reduce the calculation complexity and extract the main information
+    :param X:dataSet
+    :param n_components: the objective low dimension that dataSet is reduced to
+    :return:low_dx
+    """
     # 1.对原数据集进行零均值化
     means = np.mean(X, axis=0)  # 计算每一列的均值
     mean_values = X - means  # 每一列进行零均值化
     # 2.求协方差
-    cov_matrix = np.cov(mean_values, rowvar=False)  # 每一列作为独立变量求协方差
+    cov_matrix = np.cov(mean_values, rowvar=False)  # 每一列作为独立变量求协方差，即每一列表示一个属性
     # 3.求协方差矩阵的特征值和特征向量
     eig_values, eig_vectors = np.linalg.eig(np.mat(cov_matrix))
     # 4.将特征值按从大到小排列并选出前r个特征值对应的特征向量
@@ -104,6 +111,11 @@ def pca(X, n_components):
 
 
 def cal_d(X=np.array([])):
+    """
+    calculate the Euclidean distances between pairs of data points
+    :param X: input data set
+    :return: Euclidean distance ndarray
+    """
     if X.ndim != 2:
         print("Error: X should be a matrix.")
         return -1
@@ -130,7 +142,6 @@ def cal_p(X=np.array([]), tol=1e-5, perplexity=40.0):
     # print(D)
     # 2.变量初始化
     (n, d) = X.shape
-    # print(n)
     Pi = np.zeros((n, n))
     beta = np.ones((n, 1))
     logU = np.log(perplexity)
@@ -144,6 +155,7 @@ def cal_p(X=np.array([]), tol=1e-5, perplexity=40.0):
         (H, P) = Hbeta(Di)
         Hdiff = H - logU
         try_time = 0
+        # binary search for beta
         while np.abs(Hdiff) > tol and try_time < 50:
             if Hdiff > 0:
                 beta_min = beta[i].copy()
@@ -162,7 +174,6 @@ def cal_p(X=np.array([]), tol=1e-5, perplexity=40.0):
             try_time += 1
         Pi[i, np.concatenate((np.r_[0:i], np.r_[i+1: n]))] = P
     print("Mean value of sigma: %f" % np.mean(np.sqrt(1/beta)))
-    # print(Pi)
     return Pi
 
 
@@ -206,7 +217,7 @@ def tsne(X=np.array([]), dims=2, pca_dims=100, perplexity=40.0):
     X = pca(X, pca_dims).real
     # normalize X again to avoid calculating long distances
     X = (X - np.min(X))/(np.max(X)-np.min(X))
-    # print(X)
+    print(X)
     (n, d) = X.shape
     T = 1000  # iteration times T
     momentum_first = 0.5  # when T < 250
@@ -228,8 +239,8 @@ def tsne(X=np.array([]), dims=2, pca_dims=100, perplexity=40.0):
     # print(P)
     P = P + np.transpose(P)
     # print(np.sum(P))
-    P = P / np.sum(P)  # 对称化,np.sum(p)=2000,i.e 2n
-    P = P * 4.  # early exaggeration
+    P = P / np.sum(P)  # 对称化,np.sum(p)=2n，因为每一个x_i对应的概率分布加起来是2(加上转置之后),np.sum(P)一共加了n次
+    P = P * 4.  # early exaggeration，这一步来自于论文，最开始的50次迭代使用了夸张
     P = np.maximum(P, 1e-12)  # 将小于e-12的都抹去，为了计算的稳定性
 
     # Run iterations
@@ -275,11 +286,21 @@ def tsne(X=np.array([]), dims=2, pca_dims=100, perplexity=40.0):
         if t == 50:
             P = P / 4.
     # Return solution
-    # return Y, Y_animation
+    # return Y, Y_animation # for animation drawing
     return Y
 
 
 def draw_tsne(dataSet, labelSet, dims, pca_dims, perplexity, saturated=False):
+    """
+    user interface of draw 2-D scatter after applying t-SNE method on high dimension dataSet
+    :param dataSet:
+    :param labelSet:
+    :param dims:
+    :param pca_dims:
+    :param perplexity:
+    :param saturated:
+    :return:
+    """
     # preprocess the image data(mainly flatten to 1-D)
     Y = pre_handle_images(dataSet, saturated)
     # (Y, Y_animation) = tsne(Y, dims=dims, pca_dims=pca_dims, perplexity=perplexity)  # perplexity 30似乎聚类效果最好
@@ -307,7 +328,16 @@ def draw_tsne(dataSet, labelSet, dims, pca_dims, perplexity, saturated=False):
 
     traces = []
     for i in range(10):
-        hover_filenames = ['digit_%d_%d.png' % (scatter_array[i, j, 2], i) for j in range(scatter_array.shape[1])]
+        if not saturated:
+            if Y.shape[0] == 1000:
+                hover_filenames = ['img/digit_%d_%d.png' % (scatter_array[i, j, 2], i) for j in
+                                   range(scatter_array.shape[1])]
+            else:
+                hover_filenames = ['img3/digit_%d_%d.png' % (scatter_array[i, j, 2], i) for j in
+                                   range(scatter_array.shape[1])]
+        else:
+            hover_filenames = ['img2/digit_%d_%d.png' % (scatter_array[i, j, 2], i) for j in
+                               range(scatter_array.shape[1])]
         trace = go.Scatter(
             x=scatter_array[i, :, 0],
             y=scatter_array[i, :, 1],
@@ -340,6 +370,6 @@ if __name__ == "__main__":
     labels2 = np.loadtxt('data/mnist2500_labels.txt')
     # print(images2.shape, labels2.shape)
     # draw_all_images()
-    draw_tsne(dataSet=images, labelSet=labels, dims=2, pca_dims=40, perplexity=40.0)
-    draw_tsne(dataSet=images, labelSet=labels, dims=2, pca_dims=40, perplexity=40.0, saturated=True)
-    draw_tsne(dataSet=images2, labelSet=labels2, dims=2, pca_dims=40, perplexity=40.0)
+    draw_tsne(dataSet=images, labelSet=labels, dims=2, pca_dims=40, perplexity=50.0)
+    draw_tsne(dataSet=images, labelSet=labels, dims=2, pca_dims=40, perplexity=50.0, saturated=True)
+    draw_tsne(dataSet=images2, labelSet=labels2, dims=2, pca_dims=40, perplexity=50.0)

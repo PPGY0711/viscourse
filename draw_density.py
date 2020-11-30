@@ -45,38 +45,13 @@ def pre_handle_images(dataSet, saturated=False):
         return dataSet
 
 
-def tsne(dims=2):
+def kde(data=np.array([]), filename=""):
     """
-    Using sklearn TSNE package to reduce the data dimension to 2-D
-    :param X:
-    :param dims:
-    :return:
-    """
-    X = np.load('data/sampled_image.npy')
-    # X = pre_handle_images(X)
-    X = pre_handle_images(X,True)
-    labelSet = np.load('data/sampled_label.npy')
-    # X = np.loadtxt('data/mnist2500_X.txt')
-    # labelSet = np.loadtxt('data/mnist2500_labels.txt')
-    X_embedded = TSNE(n_components=dims).fit_transform(X)
-    np.save('sklearn_tsne/mnist1000_X_1.npy', X_embedded)
-    plt.scatter(X_embedded[:, 0], X_embedded[:, 1], 20, labelSet)
-    # plt.savefig('sklearn_tsne/mnist2500_X_1.png')
-    plt.savefig('sklearn_tsne/mnist1000_X_1.png')
-    # plt.savefig('sklearn_tsne/mnist1000_X_1.png')
-    plt.show()
-
-
-def kde(data=np.array([])):
-    """
-    Using different kernel function (6 kinds) to esimate the density function
-    :param X:
-    :param kernel: kernel function index
+    Using different kernel function (gaussian) to esimate the density function
+    :param data:
     :return:
     """
     # Prepare for data
-    # kernel_functions = ['gaussian', 'tophat', 'epanechnikov', 'exponential', 'linear', 'cosine']
-    # kernel = kernel_functions[kernel]
     x = data[:, 0]
     y = data[:, 1]
     xmin, xmax = int(np.min(data[:, 0])-10), int(np.max(data[:, 0])+10)
@@ -88,7 +63,6 @@ def kde(data=np.array([])):
     values = np.vstack([x, y])
     kernel = st.gaussian_kde(values)
     f = np.reshape(kernel(positions).T, xx.shape)
-
     fig = plt.figure()
     ax = fig.gca()
     ax.set_xlim(xmin, xmax)
@@ -96,9 +70,6 @@ def kde(data=np.array([])):
     # Contourf plot
     cfset = ax.contourf(xx, yy, f, 10, cmap='Blues')
     cb = fig.colorbar(cfset)
-    # plt.colorbar()
-    # Or kernel density estimate plot instead of the contourf plot
-    # ax.imshow(np.rot90(f), cmap='Blues', extent=[xmin, xmax, ymin, ymax])
     # Contour plot
     cset = ax.contour(xx, yy, f, 10, colors='k')
     # Label plot
@@ -107,13 +78,58 @@ def kde(data=np.array([])):
     ax.set_ylabel('Y')
     # zz = griddata
     # plt.colorbar(fig, ax=[cset, cfset])
-    plt.savefig('sklearn_tsne/mnist%d_X_density_map.png' % (data.shape[0]))
+    # plt.savefig('density/mnist%d_X_density_map.png' % (data.shape[0]))
+    plt.savefig(filename)
     plt.show()
+
+
+def draw_density(X=np.array([]), labels=np.array([]), dims=2, perplexity=30.0, saturated=False):
+    """
+    Using sklearn TSNE package to reduce the data dimension to 2-D and draw the density Map
+    :param X:
+    :param dims:
+    :return:
+    """
+    X_embedded = TSNE(n_components=dims, perplexity=perplexity).fit_transform(X)  # Using TSNE provided by sklearn
+    # draw density map
+    if not saturated:
+        if X.shape[0] == 1000:
+            np.save('density/mnist1000_X_%d_0.npy' % (int(perplexity)), X_embedded)
+            kde(X_embedded, 'density/mnist%d_X_%d_0_density_map.png' % (X_embedded.shape[0], int(perplexity)))
+            picname = 'density/mnist%d_X_%d_0.png' % (X_embedded.shape[0], int(perplexity))
+        else:
+            np.save('density/mnist2500_X_%d_1.npy' % (int(perplexity)), X_embedded)
+            kde(X_embedded, 'density/mnist%d_X_%d_1_density_map.png' % (X_embedded.shape[0], int(perplexity)))
+            picname = 'density/mnist%d_X_%d_1.png' % (X_embedded.shape[0], int(perplexity))
+    else:
+        np.save('density/mnist1000_X_%d_1.npy' % (int(perplexity)), X_embedded)
+        kde(X_embedded, 'density/mnist%d_X_%d_1_density_map.png' % (X_embedded.shape[0], int(perplexity)))
+        picname = 'density/mnist%d_X_%d_1.png' % (X_embedded.shape[0], int(perplexity))
+    plt.scatter(X_embedded[:, 0], X_embedded[:, 1], 20, labels)
+    plt.savefig(picname)
+    plt.show()
+
+
+def draw_density_map(perplexity=30.0):
+    """
+    Test function to generate density map with different perplexity
+    :param perplexity:
+    :return:
+    """
+    dataSet1 = np.loadtxt('data/mnist2500_X.txt')
+    dataSet2 = np.load('data/sampled_image.npy')
+    dataSet2 = pre_handle_images(dataSet2)
+    dataSet3 = np.load('data/sampled_image.npy')
+    dataSet3 = pre_handle_images(dataSet3, True)
+    labelSet1 = np.loadtxt('data/mnist2500_labels.txt')
+    labelSet2 = np.load('data/sampled_label.npy')
+    draw_density(dataSet1, labelSet1, 2, perplexity)
+    draw_density(dataSet2, labelSet2, 2, perplexity)
+    draw_density(dataSet3, labelSet2, 2, perplexity, True)
 
 
 if __name__ == "__main__":
     # print()
-    dataSet = np.load('sklearn_tsne/mnist1000_X_0.npy')
-    # print(dataSet)
-    kde(dataSet)
-    # tsne()
+    draw_density_map(20.0)
+    draw_density_map(30.0)
+    draw_density_map(40.0)

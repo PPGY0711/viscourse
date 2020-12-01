@@ -61,24 +61,23 @@ def kde(data=np.array([]), filename=""):
     xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
     positions = np.vstack([xx.ravel(), yy.ravel()])
     values = np.vstack([x, y])
+    # Kernel density estimate with gaussian
     kernel = st.gaussian_kde(values)
+    # Draw density map
     f = np.reshape(kernel(positions).T, xx.shape)
     fig = plt.figure()
     ax = fig.gca()
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
-    # Contourf plot
+    # Contourf plot (filling with color of contour)
     cfset = ax.contourf(xx, yy, f, 10, cmap='Blues')
     cb = fig.colorbar(cfset)
-    # Contour plot
+    # Contour plot (just plot the shape of contour)
     cset = ax.contour(xx, yy, f, 10, colors='k')
     # Label plot
     ax.clabel(cset, inline=1, fontsize=8)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
-    # zz = griddata
-    # plt.colorbar(fig, ax=[cset, cfset])
-    # plt.savefig('density/mnist%d_X_density_map.png' % (data.shape[0]))
     plt.savefig(filename)
     plt.show()
 
